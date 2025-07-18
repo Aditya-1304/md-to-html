@@ -6,6 +6,7 @@ enum Block <'a>{
     Header(u8, &'a str),
     Paragraph(&'a str),
     UnorderedList(Vec<&'a str>),
+    CodeBlock(&'a str),
 }
 
 fn main() {
@@ -41,7 +42,11 @@ fn tokenize(markdown: &str) -> Vec<Block> {
             continue;
         }
 
-        if trimmed_block.starts_with("# ") {
+
+        if trimmed_block.starts_with("```") && trimmed_block.ends_with("```") {
+            let content = &trimmed_block[3..trimmed_block.len() - 3].trim();
+            blocks.push(Block::CodeBlock(content));
+        } else if trimmed_block.starts_with("# ") {
             blocks.push(Block::Header(1, &trimmed_block[2..]));
         } else if trimmed_block.starts_with("## ") {
             blocks.push(Block::Header(2, &trimmed_block[3..]));
@@ -79,6 +84,9 @@ fn render_blocks_to_html(blocks: Vec<Block>) -> String {
                 }
                 html_output.push_str("</ul>\n");
             }
+            Block::CodeBlock(content) => {
+                html_output.push_str(&format!("<pre><code>{}</code><pre>\n",content));
+            }
 
         }
     }
@@ -87,6 +95,31 @@ fn render_blocks_to_html(blocks: Vec<Block>) -> String {
 
 fn parse_inline_formatting(text: &str) -> String {
     let mut result = text.to_string();
+
+    loop {
+        if let Some(start_bracket) = result.find('[') {
+            if let Some(end_bracket_offset) = result[start_bracket..].find(']') {
+                let end_bracket = start_bracket + end_bracket_offset;
+
+                if result.chars().nth(end_bracket + 1) == Some('(') {
+                    if let Some(end_parenthisis_offset) = result[end_bracket..].find(')') {
+                        let end_parenthesis = end_bracket + end_parenthisis_offset;
+
+                        let link_text = &result[start_bracket + 1..end_bracket];
+                        let url = &result[end_bracket + 2..end_parenthesis];
+
+                        let parsed_link_text = parse_inline_formatting(link_text);
+
+                        let replacement = format!("<a href=\"{}\">{}</a>", url, parsed_link_text);
+                        result.replace_range(start_bracket..=end_parenthesis, &replacement);
+
+                        continue;
+                    }
+                }
+            }
+        }
+        break;
+    }
 
     while let Some(start) = result.find("***") {
         if let Some(end) = result[start + 3..].find("***") {
