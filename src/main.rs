@@ -85,7 +85,7 @@ fn render_blocks_to_html(blocks: Vec<Block>) -> String {
                 html_output.push_str("</ul>\n");
             }
             Block::CodeBlock(content) => {
-                html_output.push_str(&format!("<pre><code>{}</code><pre>\n",content));
+                html_output.push_str(&format!("<pre><code>{}</code></pre>\n",content));
             }
 
         }
