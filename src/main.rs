@@ -1,6 +1,13 @@
 use std::fs;
 use std::env;
 
+#[derive(Debug)]
+enum Block <'a>{
+    Header(u8, &'a str),
+    Paragraph(&'a str),
+    UnorderedList(Vec<&'a str>),
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
@@ -14,7 +21,9 @@ fn main() {
     let markdown_content = fs::read_to_string(input_filename)
         .expect("Error: Could not read the data form the markdown file");
 
-    let html_content = parse_markdown_to_html(&markdown_content);
+    let blocks = tokenize(&markdown_content);
+
+    let html_content = render_blocks_to_html(blocks);
 
     println!("Writing to {}...", output_filename);
     fs::write(output_filename, html_content)
@@ -23,27 +32,54 @@ fn main() {
     println!("Conversion Successful!");
 }
 
-fn parse_markdown_to_html(markdown: &str) -> String {
-    let mut html_output = String::new();
+fn tokenize(markdown: &str) -> Vec<Block> {
+    let mut blocks = Vec::new();
 
-    for block in markdown.split("\n\n") {
-        let trimmed_block = block.trim();
+    for block_str in markdown.split("\n\n") {
+        let trimmed_block = block_str.trim();
         if trimmed_block.is_empty() {
             continue;
         }
 
-        if trimmed_block.starts_with("## ") {
-            let content = &trimmed_block[3..];
-            let parsed_content = parse_inline_formatting(content);
-            html_output.push_str(&format!("<h2>{}</h2>\n", parsed_content));
-        } else if trimmed_block.starts_with("# ") {
-            let content = &trimmed_block[2..];
-            let parsed_content = parse_inline_formatting(content);
-            html_output.push_str(&format!("<h1>{}</h1>\n", parsed_content));
-        } else if !trimmed_block.is_empty() {
-            let paragraph_content = trimmed_block.replace("\n", " ");
-            let parsed_content = parse_inline_formatting(&paragraph_content);
-            html_output.push_str(&format!("<p>{}</p>\n", parsed_content));
+        if trimmed_block.starts_with("# ") {
+            blocks.push(Block::Header(1, &trimmed_block[2..]));
+        } else if trimmed_block.starts_with("## ") {
+            blocks.push(Block::Header(2, &trimmed_block[3..]));
+        } else if trimmed_block.starts_with("- ") {
+            let items = trimmed_block.lines()
+                .map(|line| line.trim_start_matches("- ").trim())
+                .collect();
+            blocks.push(Block::UnorderedList(items));
+        } else {
+            blocks.push(Block::Paragraph(trimmed_block));
+        }
+    }
+    blocks
+}
+
+fn render_blocks_to_html(blocks: Vec<Block>) -> String {
+    let mut html_output = String::new();
+
+    for block in blocks {
+        match block {
+            Block::Header(level, content) => {
+                let parsed_content = parse_inline_formatting(content);
+                html_output.push_str(&format!("<h{}>{}</h{}>\n", level, parsed_content, level));
+            }
+            Block::Paragraph(content) => {
+                let paragraph_content = content.replace('\n', " ");
+                let parsed_content = parse_inline_formatting(&paragraph_content);
+                html_output.push_str(&format!("<p>{}</p>\n",parsed_content));
+            }
+            Block::UnorderedList(items) => {
+                html_output.push_str("<ul>\n");
+                for item in items {
+                    let parsed_item = parse_inline_formatting(item);
+                    html_output.push_str(&format!(" <li>{}</li>\n",parsed_item));
+                }
+                html_output.push_str("</ul>\n");
+            }
+
         }
     }
     html_output
@@ -56,7 +92,7 @@ fn parse_inline_formatting(text: &str) -> String {
         if let Some(end) = result[start + 3..].find("***") {
             let end = end + start + 3;
             let content = &result[start + 3..end];
-            let replacement = format!("<strong><em>{}</em></strong>\n",content);
+            let replacement = format!("<strong><em>{}</em></strong>",content);
             result.replace_range(start..end + 3, &replacement);
         } else {
             break;
@@ -66,7 +102,7 @@ fn parse_inline_formatting(text: &str) -> String {
         if let Some(end) = result[start + 2..].find("**") {
             let end = end + start + 2;
             let content = &result[start + 2..end];
-            let replacement = format!("<strong>{}</strong>\n",content);
+            let replacement = format!("<strong>{}</strong>",content);
             result.replace_range(start..end + 2, &replacement);
         } else {
             break;
@@ -77,7 +113,7 @@ fn parse_inline_formatting(text: &str) -> String {
         if let Some(end) = result[start + 1..].find("*") {
             let end = end + start + 1;
             let content = &result[start + 1..end];
-            let replacement = format!("<em>{}</em>\n",content);
+            let replacement = format!("<em>{}</em>",content);
             result.replace_range(start..end + 1, &replacement);
         } else {
             break;
