@@ -31,13 +31,43 @@ fn parse_markdown_to_html(markdown: &str) -> String {
 
         if trimmed_line.starts_with("## ") {
             let content = &trimmed_line[3..];
-            html_output.push_str(&format!("<h2>{}</h2>\n", content));
+            let parsed_content = parse_inline_formatting(content);
+            html_output.push_str(&format!("<h2>{}</h2>\n", parsed_content));
         } else if trimmed_line.starts_with("# ") {
             let content = &trimmed_line[2..];
-            html_output.push_str(&format!("<h1>{}</h1>\n", content));
+            let parsed_content = parse_inline_formatting(content);
+            html_output.push_str(&format!("<h1>{}</h1>\n", parsed_content));
         } else if !trimmed_line.is_empty() {
-            html_output.push_str(&format!("<p>{}</p>\n", trimmed_line));
+            let parsed_content = parse_inline_formatting(trimmed_line);
+            html_output.push_str(&format!("<p>{}</p>\n", parsed_content));
         }
     }
     html_output
+}
+
+fn parse_inline_formatting(text: &str) -> String {
+    let mut result = text.to_string();
+
+    while let Some(start) = result.find("**") {
+        if let Some(end) = result[start + 2..].find("**") {
+            let end = end + start + 2;
+            let content = &result[start + 2..end];
+            let replacement = format!("<strong>{}</strong>\n",content);
+            result.replace_range(start..end + 2, &replacement);
+        } else {
+            break;
+        }
+    }
+
+    while let Some(start) = result.find("*") {
+        if let Some(end) = result[start + 1..].find("*") {
+            let end = end + start + 1;
+            let content = &result[start + 1..end];
+            let replacement = format!("<em>{}</em>\n",content);
+            result.replace_range(start..end + 1, &replacement);
+        } else {
+            break;
+        }
+    }
+    result
 }
