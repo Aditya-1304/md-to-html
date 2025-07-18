@@ -1,5 +1,5 @@
 [package]
-name = "md-converter"
+name = "md-forge"
 version = "0.1.0"
 edition = "2024"
 authors = ["Aditya Mandal mandaladitya1614@gmail.com"]
