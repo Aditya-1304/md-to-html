@@ -66,10 +66,18 @@ fn tokenize(markdown: &str) -> Vec<Block> {
 fn parse_block(lines: Vec<&str>) -> Block {
     let first_line = lines[0].trim();
 
-    if first_line.starts_with("# ") {
-        Block::Header(1, first_line[2..].to_string())
+    if first_line.starts_with("###### ") {
+        Block::Header(6, first_line[7..].to_string())
+    } else if first_line.starts_with("##### ") {
+        Block::Header(5, first_line[6..].to_string())
+    } else if first_line.starts_with("#### ") {
+        Block::Header(4, first_line[5..].to_string())
+    } else if first_line.starts_with("### ") {
+        Block::Header(3, first_line[4..].to_string())
     } else if first_line.starts_with("## ") {
         Block::Header(2, first_line[3..].to_string())
+    } else if first_line.starts_with("# ") {
+        Block::Header(1, first_line[2..].to_string())
     } else if first_line.starts_with("```") {
         let content = if lines.len() > 1 {
             lines[1..lines.len() - 1].join("\n")
@@ -86,9 +94,19 @@ fn parse_block(lines: Vec<&str>) -> Block {
     } else if first_line.starts_with("1. ") {
         let items = lines
             .iter()
-            .map(|line| line.split_once(". ").unwrap_or(("", "")).1.trim().to_string())
+            .filter_map(|line| {
+                if let Some(dot_pos) = line.find(". ") {
+                    let number_part = &line[..dot_pos];
+                    if number_part.chars().all(|c| c.is_ascii_digit()) {
+                        Some(line[(dot_pos + 2)..].trim().to_string())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
             .collect();
-        
         Block::OrderedList(items)
     } else if first_line.starts_with("> ") {
         let content = lines
@@ -155,9 +173,9 @@ fn parse_inline_formatting(text: &str) -> String {
                 let end_bracket = start_bracket + end_bracket_offset;
 
                 if result.chars().nth(end_bracket + 1) == Some('(') {
-                    if let Some(end_paren_offset) = result[end_bracket..].find(')') {
+                    if let Some(end_paren_offset) = result[end_bracket + 2..].find(')') {
                         
-                        let end_parenthesis = end_bracket + end_paren_offset;
+                        let end_parenthesis = end_bracket + 2 + end_paren_offset;
 
                         let link_text = &result[start_bracket + 1..end_bracket];
                         let url = &result[end_bracket + 2..end_parenthesis];
