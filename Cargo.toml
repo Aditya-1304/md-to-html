@@ -2,5 +2,22 @@
 name = "md-converter"
 version = "0.1.0"
 edition = "2024"
+authors = ["Aditya Mandal mandaladitya1614@gmail.com"]
+description = "A blazingly fast, lightweight Markdown to HTML converter built entirely in Rust"
+license = "MIT"
+repository = "https://github.com/Aditya-1304/md-to-html"
+homepage = "https://github.com/Aditya-1304/md-to-html"
+keywords = ["markdown", "html", "converter", "parser", "cli"]
+categories = ["command-line-utilities", "text-processing", "parser-implementations"]
+readme = "README.md"
+exclude = [
+    "test.md",
+    "output.html",
+    "*.html"
+]
+
+[[bin]]
+name = "md-forge"
+path = "src/main.rs"
 
 [dependencies]
